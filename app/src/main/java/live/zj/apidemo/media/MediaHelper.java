@@ -69,11 +69,20 @@ public class MediaHelper {
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.LOLLIPOP) {
             mediaFormat.setString(MediaFormat.KEY_FRAME_RATE, null);
         }
+        MediaExtractor mediaExtractor = new MediaExtractor();
         MediaCodec decoder = MediaCodec.createByCodecName(decoderName);
         decoder.setCallback(new MediaCodec.Callback() {
             @Override
             public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
                 ByteBuffer inputBuffer = codec.getInputBuffer(index);
+                if (inputBuffer != null) {
+                    int size = mediaExtractor.readSampleData(inputBuffer, 0);
+                    if (size < 0) {
+                        decoder.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                    } else {
+                        codec.queueInputBuffer(index, 0, size, 0, 0);
+                    }
+                }
             }
 
             @Override
@@ -88,8 +97,9 @@ public class MediaHelper {
 
             @Override
             public void onOutputFormatChanged(@NonNull MediaCodec codec, @NonNull MediaFormat format) {
-                codec.configure(format, surface, null, 0);
             }
         });
+        decoder.configure(mediaFormat, surface, null, 0);
+        decoder.start();
     }
 }
